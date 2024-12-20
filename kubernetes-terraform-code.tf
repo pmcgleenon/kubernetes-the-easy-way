@@ -27,7 +27,7 @@ locals {
 variable "pod_subnet" { default = "10.217.0.0/16" }
 
 # https://www.digitalocean.com/docs/platform/availability-matrix/#datacenter-regions
-variable "dc_region" { default = "nyc3" }
+variable "dc_region" { default = "ams3" }
 
 # https://docs.digitalocean.com/reference/api/api-reference/#operation/sizes_list
 # curl -X GET -H "Authorization: Bearer $DO_PAT" "https://api.digitalocean.com/v2/sizes" | jq | grep cpu
@@ -177,6 +177,7 @@ EOF
       # INSTALL FALCO
       "curl -fsSL https://falco.org/repo/falcosecurity-packages.asc | sudo gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg",
       "echo 'deb [signed-by=/usr/share/keyrings/falco-archive-keyring.gpg] https://download.falco.org/packages/deb stable main' | sudo tee -a /etc/apt/sources.list.d/falcosecurity.list",
+      "sudo apt-get update -y"
       "sudo apt-get install -y falco"
       ]
     }
@@ -273,6 +274,7 @@ EOF
       # INSTALL FALCO
       "curl -fsSL https://falco.org/repo/falcosecurity-packages.asc | sudo gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg",
       "echo 'deb [signed-by=/usr/share/keyrings/falco-archive-keyring.gpg] https://download.falco.org/packages/deb stable main' | sudo tee -a /etc/apt/sources.list.d/falcosecurity.list",
+      "sudo apt-get update -y"
       "sudo apt-get install -y falco"
       ]
     }
