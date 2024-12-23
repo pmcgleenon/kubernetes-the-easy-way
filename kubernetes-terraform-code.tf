@@ -138,7 +138,7 @@ EOF
       # fix crictl (avoids deprecated failure error around dockershim)
       "printf 'runtime-endpoint: unix:///run/containerd/containerd.sock' | sudo tee /etc/crictl.yaml",
       # containerd CNI
-      "curl -Lo 'cni-plugins-linux.tgz' https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz",
+      "curl -Lo 'cni-plugins-linux.tgz' https://github.com/containernetworking/plugins/releases/download/v1.6.1/cni-plugins-linux-amd64-v1.6.1.tgz",
       "sudo mkdir -p /opt/cni/bin",
       "sudo tar Cxzvf /opt/cni/bin cni-plugins-linux.tgz",
       "sudo systemctl restart containerd",
@@ -177,7 +177,7 @@ EOF
       # INSTALL FALCO
       "curl -fsSL https://falco.org/repo/falcosecurity-packages.asc | sudo gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg",
       "echo 'deb [signed-by=/usr/share/keyrings/falco-archive-keyring.gpg] https://download.falco.org/packages/deb stable main' | sudo tee -a /etc/apt/sources.list.d/falcosecurity.list",
-      "sudo apt-get update -y"
+      "sudo apt-get update -y",
       "sudo apt-get install -y falco"
       ]
     }
@@ -274,12 +274,80 @@ EOF
       # INSTALL FALCO
       "curl -fsSL https://falco.org/repo/falcosecurity-packages.asc | sudo gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg",
       "echo 'deb [signed-by=/usr/share/keyrings/falco-archive-keyring.gpg] https://download.falco.org/packages/deb stable main' | sudo tee -a /etc/apt/sources.list.d/falcosecurity.list",
-      "sudo apt-get update -y"
+      "sudo apt-get update -y",
       "sudo apt-get install -y falco"
       ]
     }
 }
 
+##########################
+#### Public IP Address 
+##########################
+provider "whatsmyip" {}
+
+data "whatsmyip" "public_ip" {}
+
+output "my_public_ip" {
+  value = data.whatsmyip.public_ip
+}
+
+##########################
+#### IP Access Control
+##########################
+resource "digitalocean_firewall" "k8s-access" {
+  name = "only-22-and-6443"
+
+  droplet_ids = flatten([
+    digitalocean_droplet.control_plane[*].id,
+    digitalocean_droplet.worker[*].id
+  ])
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "22"
+    source_addresses = ["${data.whatsmyip.public_ip.ip}"]
+  }
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "6443"
+    source_addresses = ["${data.whatsmyip.public_ip.ip}"]
+  }
+
+  inbound_rule {
+    protocol         = "icmp"
+    source_addresses = ["${data.whatsmyip.public_ip.ip}"]
+  }
+
+  outbound_rule {
+    protocol              = "tcp"
+    port_range            = "80"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  outbound_rule {
+    protocol              = "tcp"
+    port_range            = "443"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  outbound_rule {
+    protocol              = "tcp"
+    port_range            = "53"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  outbound_rule {
+    protocol              = "udp"
+    port_range            = "53"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  outbound_rule {
+    protocol              = "icmp"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
+  }
+}
 
 ##########################
 #### OUTPUT VARIABLES ####

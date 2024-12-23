@@ -7,5 +7,9 @@ terraform {
     }
     null = { version = "~> 3.1" }
     random = { version = "~> 3.1" }
+    whatsmyip = {
+      source = "dewhurstwill/whatsmyip"
+      version = "1.0.3"
+    }
   }
 }
