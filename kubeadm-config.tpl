@@ -28,7 +28,7 @@ apiVersion: kubeadm.k8s.io/v1beta3
 kind: JoinConfiguration
 discovery:
   bootstrapToken:
-    apiServerEndpoint: ${control_plane_ip}:6443
+    apiServerEndpoint: ${control_plane_private_ip}:6443
     token: wi19h5.n18aqn376cwny601
     unsafeSkipCAVerification: true
   timeout: 5m0s

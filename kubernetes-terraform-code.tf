@@ -104,7 +104,7 @@ EOF
         cluster_name = format("ktew-%s", var.dc_region),
         kubernetes_version = var.kubernetes_version,
         pod_subnet = var.pod_subnet,
-        control_plane_ip = digitalocean_droplet.control_plane[0].ipv4_address 
+        control_plane_private_ip = digitalocean_droplet.control_plane[0].ipv4_address_private 
       })
       destination = "/tmp/kubeadm-config.yaml"
   }
@@ -223,7 +223,7 @@ EOF
         cluster_name = format("ktew-%s", var.dc_region),
         kubernetes_version = var.kubernetes_version,
         pod_subnet = var.pod_subnet,
-        control_plane_ip = digitalocean_droplet.control_plane[0].ipv4_address 
+        control_plane_private_ip = digitalocean_droplet.control_plane[0].ipv4_address_private 
       })
       destination = "/tmp/kubeadm-config.yaml"
     }
@@ -311,7 +311,15 @@ resource "digitalocean_firewall" "k8s-access" {
   inbound_rule {
     protocol         = "tcp"
     port_range       = "6443"
-    source_addresses = ["${data.whatsmyip.public_ip.ip}"]
+    source_addresses = concat(
+      ["${data.whatsmyip.public_ip.ip}"],
+      [digitalocean_droplet.control_plane[0].ipv4_address_private],
+      [digitalocean_droplet.worker[0].ipv4_address_private],
+      [digitalocean_droplet.worker[1].ipv4_address_private],
+      [digitalocean_droplet.control_plane[0].ipv4_address],
+      [digitalocean_droplet.worker[0].ipv4_address],
+      [digitalocean_droplet.worker[1].ipv4_address]
+    )
   }
 
   inbound_rule {
@@ -333,6 +341,12 @@ resource "digitalocean_firewall" "k8s-access" {
 
   outbound_rule {
     protocol              = "tcp"
+    port_range            = "6443"
+    destination_addresses = ["0.0.0.0/0", "::/0"]
+  }
+
+  outbound_rule {
+    protocol              = "tcp"
     port_range            = "53"
     destination_addresses = ["0.0.0.0/0", "::/0"]
   }
@@ -347,6 +361,28 @@ resource "digitalocean_firewall" "k8s-access" {
     protocol              = "icmp"
     destination_addresses = ["0.0.0.0/0", "::/0"]
   }
+
+  # Allow all TCP traffic between nodes on private network
+  inbound_rule {
+    protocol = "tcp"
+    port_range = "1-65535"
+    source_addresses = concat(
+      [digitalocean_droplet.control_plane[0].ipv4_address_private],
+      [digitalocean_droplet.worker[0].ipv4_address_private],
+      [digitalocean_droplet.worker[1].ipv4_address_private]
+    )
+  }
+
+  # Allow all UDP traffic between nodes on private network
+  inbound_rule {
+    protocol = "udp"
+    port_range = "1-65535"
+    source_addresses = concat(
+      [digitalocean_droplet.control_plane[0].ipv4_address_private],
+      [digitalocean_droplet.worker[0].ipv4_address_private],
+      [digitalocean_droplet.worker[1].ipv4_address_private]
+    )
+  }
 }
 
 ##########################
@@ -357,8 +393,16 @@ output "control_plane_ip" {
   value = digitalocean_droplet.control_plane.*.ipv4_address
 }
 
+output "control_plane_private_ip" {
+  value = digitalocean_droplet.control_plane.*.ipv4_address_private
+}
+
 output "worker_ip" {
   value = digitalocean_droplet.worker.*.ipv4_address
+}
+
+output "worker_private_ip" {
+  value = digitalocean_droplet.worker.*.ipv4_address_private
 }
 
 output "cluster_context" {
